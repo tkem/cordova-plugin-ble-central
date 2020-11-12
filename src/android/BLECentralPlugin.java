@@ -706,37 +706,18 @@ public class BLECentralPlugin extends CordovaPlugin {
 
     private void findLowEnergyDevices(CallbackContext callbackContext, UUID[] serviceUUIDs, int scanSeconds) {
 
-
-
         if (!locationServicesEnabled()) {
             LOG.w(TAG, "Location Services are disabled");
         }
 
-        if (Build.VERSION.SDK_INT >= 29) {                                  // (API 29) Build.VERSION_CODES.Q
-            if (!PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
-                permissionCallback = callbackContext;
-                this.serviceUUIDs = serviceUUIDs;
-                this.scanSeconds = scanSeconds;
-
-                String[] permissions = {
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        "android.permission.ACCESS_BACKGROUND_LOCATION"     // (API 29) Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                };
-
-                PermissionHelper.requestPermissions(this, REQUEST_ACCESS_LOCATION, permissions);
-                return;
-            }
-        } else {
-            if(!PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)) {
-                // save info so we can call this method again after permissions are granted
-                permissionCallback = callbackContext;
-                this.serviceUUIDs = serviceUUIDs;
-                this.scanSeconds = scanSeconds;
-                PermissionHelper.requestPermission(this, REQUEST_ACCESS_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION);
-                return;
-            }
+        if(!PermissionHelper.hasPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)) {
+            // save info so we can call this method again after permissions are granted
+            permissionCallback = callbackContext;
+            this.serviceUUIDs = serviceUUIDs;
+            this.scanSeconds = scanSeconds;
+            PermissionHelper.requestPermission(this, REQUEST_ACCESS_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION);
+            return;
         }
-
 
         // return error if already scanning
         if (bluetoothAdapter.isDiscovering()) {
@@ -838,18 +819,8 @@ public class BLECentralPlugin extends CordovaPlugin {
 
     /* @Override */
     public void onRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) {
-        // Android 10 (API 29) and higher
-        // Users MUST accept ACCESS_FINE_LOCATION
-        // Users may accept or reject ACCESS_BACKGROUND_LOCATION
-        // Android 9 (API 28) and lower
-        // Users MUST accept ACCESS_COARSE_LOCATION
-        for (int i = 0; i < permissions.length; i++) {
-
-            if (permissions[i].equals(Manifest.permission.ACCESS_FINE_LOCATION) && grantResults[i] == PackageManager.PERMISSION_DENIED) {
-                LOG.d(TAG, "User *rejected* Fine Location Access");
-                this.permissionCallback.error("Location permission not granted.");
-                return;
-            } else if (permissions[i].equals(Manifest.permission.ACCESS_COARSE_LOCATION) && grantResults[i] == PackageManager.PERMISSION_DENIED) {
+        for(int result:grantResults) {
+            if(result == PackageManager.PERMISSION_DENIED) {
                 LOG.d(TAG, "User *rejected* Coarse Location Access");
                 this.permissionCallback.error("Location permission not granted.");
                 return;
